@@ -13,7 +13,7 @@ contract UmbrellaOracleAdapter is IPriceOracle, Ownable {
 
     event PriceUpdated(address indexed asset, uint256 priceE18);
 
-    constructor() Ownable() {}
+    constructor() Ownable(msg.sender) {}
 
     function setPriceE18(address asset, uint256 priceE18) external onlyOwner {
         require(asset != address(0) || asset == address(0), "invalid asset");
