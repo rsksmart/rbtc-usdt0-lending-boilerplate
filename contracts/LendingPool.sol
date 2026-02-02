@@ -5,7 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
 
 /// @title Minimal LendingPool (RBTC collateral, borrow USDT0)
@@ -32,7 +32,7 @@ contract LendingPool is Ownable, ReentrancyGuard {
     event OracleUpdated(address indexed newOracle);
     event LtvUpdated(uint256 newLtvBps);
 
-    constructor(address _usdt0, address _oracle, uint256 _ltvBps) Ownable() {
+    constructor(address _usdt0, address _oracle, uint256 _ltvBps) Ownable(msg.sender) {
         require(_usdt0 != address(0), "USDT0_0");
         require(_oracle != address(0), "ORACLE_0");
         require(_ltvBps > 0 && _ltvBps <= 9500, "LTV_RANGE");
