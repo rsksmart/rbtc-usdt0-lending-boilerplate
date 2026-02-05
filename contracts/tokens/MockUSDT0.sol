@@ -9,7 +9,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract MockUSDT0 is ERC20, Ownable {
     uint8 private constant _DECIMALS = 6;
 
-    constructor(uint256 initialSupply) ERC20("Tether USD0 (Mock)", "USDT0") Ownable() {
+    constructor(uint256 initialSupply) ERC20("Tether USD0 (Mock)", "USDT0") Ownable(msg.sender) {
         if (initialSupply > 0) {
             _mint(msg.sender, initialSupply);
         }

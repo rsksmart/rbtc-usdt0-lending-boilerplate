@@ -24,5 +24,22 @@ node_modules
 /coverage.json
 
 # Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/localhost
 ignition/deployments/chain-31
 ignition/deployments/chain-30
+
+# Compilation output
+/dist
+
+# pnpm deploy output
+/bundle
+
+# Hardhat compilation (v2) support directory
+/cache
+
+# Typechain output
+/types
+
+# Local config files
+.config/
+.local/
