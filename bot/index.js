@@ -3,7 +3,8 @@ const config = require('./src/config');
 const blockchain = require('./src/services/blockchain');
 
 if (!config.telegramToken) {
-    console.warn("TELEGRAM_BOT_TOKEN is not set in .env. Bot will fail to start.");
+    console.error("TELEGRAM_BOT_TOKEN is not set in .env. Bot will fail to start.");
+    process.exit(1);
 }
 
 const bot = new TelegramBot(config.telegramToken, { polling: true });

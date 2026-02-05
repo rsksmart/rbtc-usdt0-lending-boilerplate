@@ -24,10 +24,15 @@ const ERC20ABI = [
     "function decimals() view returns (uint8)"
 ];
 
+const privateKey = process.env.PRIVATE_KEY;
+if (!privateKey) {
+    throw new Error("PRIVATE_KEY is missing in .env file");
+}
+
 module.exports = {
     telegramToken: process.env.TELEGRAM_BOT_TOKEN,
     rpcUrl: process.env.RSK_TESTNET_RPC || "https://public-node.testnet.rsk.co",
-    privateKey: process.env.PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    privateKey: privateKey,
     deployments,
     abis: {
         LendingPool: LendingPoolABI,
