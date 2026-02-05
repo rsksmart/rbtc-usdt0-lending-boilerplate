@@ -13,9 +13,17 @@
 
 ⚠️ **Educational only. Not audited. Do NOT deploy to mainnet.**
 
-## Quick Start (local / Replit)
+## What's New in v0.2.0
 
-Test this example on Rootstock Replit [Here](https://replit.com/@rootstockDevX/Rootstock-Lending-Boilerplate)
+This version upgrades the boilerplate to modern tooling:
+
+- **Hardhat v3.1.0** with EDR (Ethereum Development Runtime) support
+- **OpenZeppelin v5.4.0** for latest security best practices
+- **Hardhat Ignition v3** for declarative deployments
+- **TypeScript configuration** for type-safe development
+- **Viem integration** for modern Ethereum interactions
+
+## Quick Start (local / Replit)
 
 1) **Install** (first run only):
 ```bash
@@ -36,10 +44,9 @@ Here's how it looks:
 
 ```bash
 
-> rbtc-usdt0-lending-boilerplate@0.1.0 demo
+> rbtc-usdt0-lending-boilerplate@0.2.0 demo
 > hardhat run scripts/demo.js
 
-Downloading compiler 0.8.19
 Compiled 13 Solidity files successfully (evm target: paris).
 Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 Alice   : 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
@@ -92,11 +99,9 @@ Demo complete ✅
 
 ## Deploy to Rootstock (optional)
 
-1) Getting tRBTC
+### Using Hardhat Ignition (Recommended)
 
-You can get tRBTC from the [Rootstock Faucet](https://faucet.rootstock.io/).  You would need at least `0.03 tRBTC` to cover deployment and transaction fees.
-
-2) Configure Environment:
+1) **Configure Environment**:
 
 Copy `.env.example` → `.env`, and fill in the values:
 
@@ -106,46 +111,25 @@ RSK_TESTNET_RPC=https://public-node.testnet.rsk.co
 RSK_MAINNET_RPC=https://public-node.rsk.co
 ```
 
-3) Replace Mock USDT0 with Real Address:
-- The deployment script (`scripts/demo-testnet.js`) currently deploys the `MockUSDT0.sol`. For real deployments, you must use the actual USDT0 token address on Rootstock Testnet (e.g., 0x779Ded0c9e1022225f8E0630b35a9b54bE713736).
+2) **Get tRBTC**:
 
-To achieve this, you need to modify your deployment script (e.g., `scripts/demo-testnet.js`) to use the existing address instead of deploying the mock token.
+You can get tRBTC from the [Rootstock Faucet](https://faucet.rootstock.io/). You would need at least `0.03 tRBTC` to cover deployment and transaction fees.
 
-It should look like this:
+3) **Deploy using Ignition**:
 
-```js
-  // --- ORIGINAL CODE (Mocks deployment) ---
-  // const MockUSDT0 = await ethers.getContractFactory("MockUSDT0");
-  // const usdt0 = await MockUSDT0.deploy(ethers.parseUnits("1000000", 6));
-  // await usdt0.waitForDeployment();
-  // const usdt0Addr = await usdt0.getAddress();
-  // console.log(`USDT0 : ${usdt0Addr} decimals: ${await usdt0.decimals()}n`);
-
-  // --- REPLACEMENT CODE (Real USDT0 address) ---
-  // ⚠️ Replace this placeholder with the actual Testnet USDT0 address:
-  const REAL_USDT0_ADDRESS = "0x779Ded0c9e1022225f8E0630b35a9b54bE713736"; 
-  const usdt0Addr = REAL_USDT0_ADDRESS;
-  console.log(`USDT0 Address Used: ${usdt0Addr}`);
-
-  // Deploy Oracle and Pool using the REAL_USDT0_ADDRESS:
-  const Oracle = await ethers.getContractFactory("UmbrellaOracleAdapter");
-  const oracle = await Oracle.deploy();
-  await oracle.waitForDeployment();
-
-  const LendingPool = await ethers.getContractFactory("LendingPool");
-  const pool = await LendingPool.deploy(usdt0Addr, await oracle.getAddress(), 7000);
-  await pool.waitForDeployment();
-
+```bash
+npm run deploy:testnet
 ```
 
-Keep the oracle mapping: `address(0)` stands for native **RBTC**; `address(USDT0)` for USDT0.
+This deploys all contracts (MockUSDT0, Oracle, LendingPool) and configures them automatically.
 
-4) Prices & Oracle Configuration:
-- This boilerplate uses **UmbrellaOracleAdapter** with owner‑settable prices.
-- For a real integration, replace it with a production oracle (e.g. APRO/RedStone/Umbrella) and keep the `IPriceOracle` interface.
+### Using Demo Script (Alternative)
 
-Run the custom deployment:
-`npx hardhat run --network rskTestnet scripts/demo-testnet.js`
+Run the interactive demo on testnet:
+
+```bash
+npm run demo:testnet
+```
 
 Result:
 
@@ -197,6 +181,27 @@ Demo testnet completed ✅
 \> If you get the error: `ProviderError: insufficient funds to pay for pending and new transactions`
 
 - Note: Ensure to have sufficient tRBTC of at least `0.003 tRBTC` to cover deployment and transaction fees.
+
+## Using Real USDT0
+
+For real deployments, replace `MockUSDT0.sol` with the actual USDT0 token address on Rootstock Testnet (e.g., 0x779Ded0c9e1022225f8E0630b35a9b54bE713736).
+
+Modify your deployment script to use the existing address instead of deploying the mock token:
+
+```js
+  // --- ORIGINAL CODE (Mocks deployment) ---
+  // const MockUSDT0 = await ethers.getContractFactory("MockUSDT0");
+  // const usdt0 = await MockUSDT0.deploy(ethers.parseUnits("1000000", 6));
+  // await usdt0.waitForDeployment();
+  // const usdt0Addr = await usdt0.getAddress();
+
+  // --- REPLACEMENT CODE (Real USDT0 address) ---
+  const REAL_USDT0_ADDRESS = "0x779Ded0c9e1022225f8E0630b35a9b54bE713736"; 
+  const usdt0Addr = REAL_USDT0_ADDRESS;
+  console.log(`USDT0 Address Used: ${usdt0Addr}`);
+```
+
+Keep the oracle mapping: `address(0)` stands for native **RBTC**; `address(USDT0)` for USDT0.
 
 ## Contracts Overview (minimal unit)
 
@@ -273,10 +278,12 @@ contracts/
   LendingPool.sol
   oracles/UmbrellaOracleAdapter.sol
   tokens/MockUSDT0.sol
+ignition/
+  modules/LendingPool.ts
 scripts/
   demo.js
   demo-testnet.js
-hardhat.config.js
+hardhat.config.ts
 package.json
 .env.example
 README.md
