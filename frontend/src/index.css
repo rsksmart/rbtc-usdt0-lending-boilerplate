@@ -6,6 +6,11 @@
   --rs-black: #000000;
   --rs-white: #ffffff;
   --rs-orange: #f7931a;
+  --rs-success: #4caf50;
+  --rs-error: #ff4444;
+  --rs-warning-bg: rgba(247, 147, 26, 0.1);
+  --rs-success-bg: rgba(76, 175, 80, 0.1);
+  --rs-error-bg: rgba(255, 68, 68, 0.1);
   --rs-gray-dark: #121212;
   --rs-gray-border: #333333;
   --rs-text-secondary: #aaaaaa;

@@ -1,73 +1,72 @@
-# React + TypeScript + Vite
+# RBTC Lending Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite frontend for the RBTC/USDT0 lending pool.
 
-Currently, two official plugins are available:
+This app connects to Rootstock networks using RainbowKit, wagmi and WalletConnect v2.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Prerequisites
 
-## React Compiler
+- Node.js 18+ and npm
+- A WalletConnect Cloud account and project
+- A browser wallet that supports Rootstock (for example, Rabby or MetaMask configured for Rootstock Testnet)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Environment variables
 
-## Expanding the ESLint configuration
+RainbowKit requires a WalletConnect Cloud project id.  
+Without it, you will see an error similar to:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+`Error: No projectId found. Every dApp must now provide a WalletConnect Cloud projectId to enable WalletConnect v2`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Create a `.env` file in this `frontend` folder based on `.env.example`:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd frontend
+cp .env.example .env
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then set the value:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+VITE_WALLET_CONNECT_PROJECT_ID=your_walletconnect_project_id_here
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+You can obtain this value from the WalletConnect Cloud dashboard.
+
+## Contract configuration
+
+The frontend is preconfigured to talk to the deployed contracts on Rootstock Testnet:
+
+- LendingPool: `0x65eB9d654c7170bD2b1fB1070437DF5CC5E8da01`
+- MockUSDT0: `0xad28C3C13a14baFD41B38633E4dE5f71F56C2FA5`
+
+If you deploy new contracts, update the addresses in the config at:
+
+- `src/config/contracts.ts`
+
+## Install and run
+
+From the repository root:
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+# edit .env and set VITE_WALLET_CONNECT_PROJECT_ID
+npm run dev
+```
+
+Then open the URL printed by Vite (by default `http://localhost:5173`).
+
+## Build and lint
+
+To run the type check and production build:
+
+```bash
+npm run build
+```
+
+To run the linter:
+
+```bash
+npm run lint
 ```

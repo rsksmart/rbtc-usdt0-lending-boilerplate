@@ -1,15 +1,18 @@
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther, parseUnits, formatEther, formatUnits } from 'viem';
-import { useState, useEffect } from 'react';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
+import { parseEther, parseUnits } from 'viem';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import LendingPoolABI from './abis/LendingPool.json';
 import MockUSDT0ABI from './abis/MockUSDT0.json';
-import logo from './assets/rootstock-logo.png';
+import HeaderBar from './components/HeaderBar';
+import WelcomeCard from './components/WelcomeCard';
+import AccountCard from './components/AccountCard';
+import SupplyWithdrawCard from './components/SupplyWithdrawCard';
+import BorrowRepayCard from './components/BorrowRepayCard';
+import StatusMessage from './components/StatusMessage';
+import { LENDING_POOL_ADDRESS, USDT0_ADDRESS, USDT0_DECIMALS } from './config/contracts';
+import type { AccountData } from './types/lending';
+import { formatUSDT } from './utils/format';
 import './App.css';
-
-// TODO: Update these with deployed addresses
-const LENDING_POOL_ADDRESS = '0x65eB9d654c7170bD2b1fB1070437DF5CC5E8da01'; // Deployed on RSK Testnet
-const USDT0_ADDRESS = '0xad28C3C13a14baFD41B38633E4dE5f71F56C2FA5';      // Deployed on RSK Testnet
 
 function App() {
   const { address, isConnected } = useAccount();
@@ -28,9 +31,9 @@ function App() {
       enabled: !!address,
     },
   });
-  const accountData = accountDataRaw as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+  const accountData = accountDataRaw as AccountData | undefined;
 
-  const { data: usdtBalance, refetch: refetchUsdt } = useReadContract({
+  const { data: usdtBalanceRaw, refetch: refetchUsdt } = useReadContract({
     address: USDT0_ADDRESS,
     abi: MockUSDT0ABI,
     functionName: 'balanceOf',
@@ -40,7 +43,7 @@ function App() {
     },
   });
 
-  const { data: usdtAllowance, refetch: refetchAllowance } = useReadContract({
+  const { data: usdtAllowanceRaw, refetch: refetchAllowance } = useReadContract({
     address: USDT0_ADDRESS,
     abi: MockUSDT0ABI,
     functionName: 'allowance',
@@ -50,211 +53,409 @@ function App() {
     },
   });
 
-  const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
-  
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash: txHash,
+  const { data: rbtcBalance, refetch: refetchRbtc } = useBalance({
+    address,
   });
 
+  const usdtBalance = usdtBalanceRaw as bigint | undefined;
+  const usdtAllowance = usdtAllowanceRaw as bigint | undefined;
+
+  const {
+    writeContract: writeDeposit,
+    data: depositHash,
+    isPending: isDepositPending,
+    error: depositError,
+  } = useWriteContract();
+
+  const {
+    writeContract: writeWithdraw,
+    data: withdrawHash,
+    isPending: isWithdrawPending,
+    error: withdrawError,
+  } = useWriteContract();
+
+  const {
+    writeContract: writeBorrow,
+    data: borrowHash,
+    isPending: isBorrowPending,
+    error: borrowError,
+  } = useWriteContract();
+
+  const {
+    writeContract: writeApprove,
+    data: approveHash,
+    isPending: isApprovePending,
+    error: approveError,
+  } = useWriteContract();
+
+  const {
+    writeContract: writeRepay,
+    data: repayHash,
+    isPending: isRepayPending,
+    error: repayError,
+  } = useWriteContract();
+
+  const { isLoading: isDepositConfirming, isSuccess: isDepositConfirmed } =
+    useWaitForTransactionReceipt({ hash: depositHash });
+
+  const { isLoading: isWithdrawConfirming, isSuccess: isWithdrawConfirmed } =
+    useWaitForTransactionReceipt({ hash: withdrawHash });
+
+  const { isLoading: isBorrowConfirming, isSuccess: isBorrowConfirmed } =
+    useWaitForTransactionReceipt({ hash: borrowHash });
+
+  const { isLoading: isApproveConfirming, isSuccess: isApproveConfirmed } =
+    useWaitForTransactionReceipt({ hash: approveHash });
+
+  const { isLoading: isRepayConfirming, isSuccess: isRepayConfirmed } =
+    useWaitForTransactionReceipt({ hash: repayHash });
+
+  const [lastAction, setLastAction] = useState<
+    'deposit' | 'withdraw' | 'borrow' | 'approve' | 'repay' | null
+  >(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (isConfirmed) {
-      refetchAccount();
-      refetchUsdt();
-      refetchAllowance();
-      setDepositAmount('');
-      setBorrowAmount('');
-      setRepayAmount('');
-      setWithdrawAmount('');
+    if (
+      isDepositConfirmed ||
+      isWithdrawConfirmed ||
+      isBorrowConfirmed ||
+      isApproveConfirmed ||
+      isRepayConfirmed
+    ) {
+      refetchAccount().catch(console.error);
+      refetchUsdt().catch(console.error);
+      refetchAllowance().catch(console.error);
+      refetchRbtc().catch(console.error);
     }
-  }, [isConfirmed]);
+  }, [
+    isApproveConfirmed,
+    isBorrowConfirmed,
+    isDepositConfirmed,
+    isRepayConfirmed,
+    isWithdrawConfirmed,
+    refetchAccount,
+    refetchAllowance,
+    refetchUsdt,
+    refetchRbtc,
+  ]);
 
-  const handleDeposit = () => {
-    if (!depositAmount) return;
-    writeContract({
-      address: LENDING_POOL_ADDRESS,
-      abi: LendingPoolABI,
-      functionName: 'depositRBTC',
-      value: parseEther(depositAmount),
-    });
-  };
+  const handleDeposit = useCallback(() => {
+    if (!depositAmount) {
+      return;
+    }
 
-  const handleWithdraw = () => {
-    if (!withdrawAmount) return;
-    writeContract({
-      address: LENDING_POOL_ADDRESS,
-      abi: LendingPoolABI,
-      functionName: 'withdrawRBTC',
-      args: [parseEther(withdrawAmount)],
-    });
-  };
+    setValidationError(null);
 
-  const handleBorrow = () => {
-    if (!borrowAmount) return;
-    writeContract({
-      address: LENDING_POOL_ADDRESS,
-      abi: LendingPoolABI,
-      functionName: 'borrowUSDT0',
-      args: [parseUnits(borrowAmount, 6)],
-    });
-  };
+    if (Number(depositAmount) <= 0) {
+      setValidationError('Amount must be greater than zero.');
+      return;
+    }
 
-  const handleApprove = () => {
-    if (!repayAmount) return;
-    writeContract({
-      address: USDT0_ADDRESS,
-      abi: MockUSDT0ABI,
-      functionName: 'approve',
-      args: [LENDING_POOL_ADDRESS, parseUnits(repayAmount, 6)],
-    });
-  };
+    try {
+      const value = parseEther(depositAmount);
+      setLastAction('deposit');
+      writeDeposit({
+        address: LENDING_POOL_ADDRESS,
+        abi: LendingPoolABI,
+        functionName: 'depositRBTC',
+        value,
+      });
+    } catch {
+      setValidationError('Enter a valid RBTC amount.');
+    }
+  }, [depositAmount, writeDeposit]);
 
-  const handleRepay = () => {
-    if (!repayAmount) return;
-    writeContract({
-      address: LENDING_POOL_ADDRESS,
-      abi: LendingPoolABI,
-      functionName: 'repayUSDT0',
-      args: [parseUnits(repayAmount, 6)],
-    });
-  };
+  const handleWithdraw = useCallback(() => {
+    if (!withdrawAmount) {
+      return;
+    }
 
-  const formatUSDT = (val: bigint) => formatUnits(val, 6);
-  const formatRBTC = (val: bigint) => formatEther(val);
+    setValidationError(null);
 
-  const formatHealthFactor = (hf: bigint) => {
-    const MAX_UINT256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935n;
-    if (hf >= MAX_UINT256) return '∞';
-    return parseFloat(formatEther(hf)).toFixed(2);
-  };
+    if (Number(withdrawAmount) <= 0) {
+      setValidationError('Amount must be greater than zero.');
+      return;
+    }
 
-  const getHealthFactorColor = (hf: bigint) => {
-    const MAX_UINT256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935n;
-    if (hf >= MAX_UINT256) return '#4caf50';
-    const val = Number(formatEther(hf));
-    if (val < 1.1) return '#ff4444';
-    return '#4caf50';
-  };
+    try {
+      const value = parseEther(withdrawAmount);
+      setLastAction('withdraw');
+      writeWithdraw({
+        address: LENDING_POOL_ADDRESS,
+        abi: LendingPoolABI,
+        functionName: 'withdrawRBTC',
+        args: [value],
+      });
+    } catch {
+      setValidationError('Enter a valid RBTC amount.');
+    }
+  }, [withdrawAmount, writeWithdraw]);
+
+  const handleBorrow = useCallback(() => {
+    if (!borrowAmount) {
+      return;
+    }
+
+    setValidationError(null);
+
+    if (Number(borrowAmount) <= 0) {
+      setValidationError('Amount must be greater than zero.');
+      return;
+    }
+
+    try {
+      const value = parseUnits(borrowAmount, USDT0_DECIMALS);
+      setLastAction('borrow');
+      writeBorrow({
+        address: LENDING_POOL_ADDRESS,
+        abi: LendingPoolABI,
+        functionName: 'borrowUSDT0',
+        args: [value],
+      });
+    } catch {
+      setValidationError('Enter a valid USDT0 amount.');
+    }
+  }, [borrowAmount, writeBorrow]);
+
+  const handleApprove = useCallback(() => {
+    if (!repayAmount) {
+      return;
+    }
+
+    setValidationError(null);
+
+    if (Number(repayAmount) <= 0) {
+      setValidationError('Amount must be greater than zero.');
+      return;
+    }
+
+    try {
+      const value = parseUnits(repayAmount, USDT0_DECIMALS);
+      setLastAction('approve');
+      writeApprove({
+        address: USDT0_ADDRESS,
+        abi: MockUSDT0ABI,
+        functionName: 'approve',
+        args: [LENDING_POOL_ADDRESS, value],
+      });
+    } catch {
+      setValidationError('Enter a valid USDT0 amount.');
+    }
+  }, [repayAmount, writeApprove]);
+
+  const handleRepay = useCallback(() => {
+    if (!repayAmount) {
+      return;
+    }
+
+    setValidationError(null);
+
+    if (Number(repayAmount) <= 0) {
+      setValidationError('Amount must be greater than zero.');
+      return;
+    }
+
+    try {
+      const value = parseUnits(repayAmount, USDT0_DECIMALS);
+      setLastAction('repay');
+      writeRepay({
+        address: LENDING_POOL_ADDRESS,
+        abi: LendingPoolABI,
+        functionName: 'repayUSDT0',
+        args: [value],
+      });
+    } catch {
+      setValidationError('Enter a valid USDT0 amount.');
+    }
+  }, [repayAmount, writeRepay]);
+
+  const {
+    isPending,
+    isConfirming,
+    isConfirmed,
+    error,
+  } = useMemo(() => {
+    const states = {
+      approve: {
+        isPending: isApprovePending,
+        isConfirming: isApproveConfirming,
+        isConfirmed: isApproveConfirmed,
+        error: approveError,
+      },
+      borrow: {
+        isPending: isBorrowPending,
+        isConfirming: isBorrowConfirming,
+        isConfirmed: isBorrowConfirmed,
+        error: borrowError,
+      },
+      deposit: {
+        isPending: isDepositPending,
+        isConfirming: isDepositConfirming,
+        isConfirmed: isDepositConfirmed,
+        error: depositError,
+      },
+      repay: {
+        isPending: isRepayPending,
+        isConfirming: isRepayConfirming,
+        isConfirmed: isRepayConfirmed,
+        error: repayError,
+      },
+      withdraw: {
+        isPending: isWithdrawPending,
+        isConfirming: isWithdrawConfirming,
+        isConfirmed: isWithdrawConfirmed,
+        error: withdrawError,
+      },
+    } as const;
+
+    if (!lastAction) {
+      return {
+        isPending: false,
+        isConfirming: false,
+        isConfirmed: false,
+        error: null as unknown as Error | null,
+      };
+    }
+
+    return states[lastAction];
+  }, [
+    approveError,
+    isApproveConfirmed,
+    isApproveConfirming,
+    isApprovePending,
+    borrowError,
+    isBorrowConfirmed,
+    isBorrowConfirming,
+    isBorrowPending,
+    depositError,
+    isDepositConfirmed,
+    isDepositConfirming,
+    isDepositPending,
+    lastAction,
+    repayError,
+    isRepayConfirmed,
+    isRepayConfirming,
+    isRepayPending,
+    withdrawError,
+    isWithdrawConfirmed,
+    isWithdrawConfirming,
+    isWithdrawPending,
+  ]);
+
+  const { statusMessage, statusVariant } = useMemo(() => {
+    if (validationError) {
+      return {
+        statusMessage: validationError,
+        statusVariant: 'error' as const,
+      };
+    }
+
+    if (isPending) {
+      return {
+        statusMessage: 'Transaction pending in wallet...',
+        statusVariant: 'pending' as const,
+      };
+    }
+
+    if (isConfirming) {
+      return {
+        statusMessage: 'Waiting for blockchain confirmation...',
+        statusVariant: 'confirming' as const,
+      };
+    }
+
+    if (isConfirmed) {
+      return {
+        statusMessage: 'Transaction confirmed successfully!',
+        statusVariant: 'success' as const,
+      };
+    }
+
+    if (error) {
+      console.error('Contract Error:', error);
+      
+      let message = 'Transaction failed.';
+      
+      if (error instanceof Error) {
+        message = error.message;
+        
+        if (message.includes('Internal server error')) {
+          message = 'Simulation failed. Check if you have enough RBTC for gas and have deposited collateral.';
+          if (rbtcBalance?.value === 0n) {
+            message = 'Simulation failed: Your RBTC balance is 0. Please get test tokens from the Rootstock faucet.';
+          }
+        } else if (message.includes('insufficient funds')) {
+          message = 'Insufficient RBTC for gas + transaction value.';
+        } else if (message.includes('User rejected')) {
+          message = 'Transaction rejected in wallet.';
+        } else if (message.includes('execution reverted')) {
+          const match = message.match(/reverted with the following reason:\s*(.*)/);
+          if (match) {
+            const reason = match[1];
+            if (reason === 'PRICE_NOT_SET') {
+              message = 'Contract Error: Oracle prices are not set. Please set prices in the Oracle contract.';
+            } else if (reason === 'INSUFFICIENT_COLLATERAL') {
+              message = 'Contract Error: Insufficient collateral. Deposit more RBTC first.';
+            } else {
+              message = `Contract Revert: ${reason}`;
+            }
+          }
+        }
+      }
+
+      return {
+        statusMessage: message,
+        statusVariant: 'error' as const,
+      };
+    }
+
+    return {
+      statusMessage: '',
+      statusVariant: 'pending' as const,
+    };
+  }, [error, isConfirmed, isConfirming, isPending, rbtcBalance?.value, validationError]);
 
   return (
     <div>
-      <header>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <img src={logo} alt="Rootstock Logo" style={{ height: '40px' }} />
-        </div>
-        <ConnectButton showBalance={false} chainStatus="icon" />
-      </header>
+      <HeaderBar />
 
-      {!isConnected && (
-        <div className="card" style={{ textAlign: 'center', padding: '4rem' }}>
-          <h2>Welcome to Rootstock Lending</h2>
-          <p style={{ color: 'var(--rs-text-secondary)', marginBottom: '2rem' }}>
-            Connect your wallet to supply collateral and borrow stablecoins.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <ConnectButton />
-          </div>
-        </div>
-      )}
+      {!isConnected && <WelcomeCard />}
 
       {isConnected && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-
-          <div className="card">
-            <h2>Your Account</h2>
-            {accountData ? (
-              <div className="account-grid">
-                <div className="account-item">
-                  <label>Collateral</label>
-                  <span>{formatRBTC(accountData[0])} RBTC</span>
-                </div>
-                <div className="account-item">
-                  <label>Debt</label>
-                  <span>{formatUSDT(accountData[1])} USDT0</span>
-                </div>
-                <div className="account-item">
-                  <label>Collateral Value</label>
-                  <span>${formatEther(accountData[2])}</span>
-                </div>
-                <div className="account-item">
-                  <label>Debt Value</label>
-                  <span>${formatEther(accountData[3])}</span>
-                </div>
-                <div className="account-item">
-                  <label>Health Factor</label>
-                  <span style={{ color: getHealthFactorColor(accountData[5]) }}>
-                    {formatHealthFactor(accountData[5])}
-                  </span>
-                </div>
-                <div className="account-item">
-                  <label>Wallet Balance</label>
-                  <span>{usdtBalance ? formatUSDT(usdtBalance as bigint) : '0'} USDT0</span>
-                </div>
-              </div>
-            ) : (
-              <p>Loading account data...</p>
-            )}
-          </div>
+        <div className="layout-column">
+          <AccountCard 
+            accountData={accountData} 
+            usdtBalance={usdtBalance} 
+            rbtcBalance={rbtcBalance?.value}
+          />
 
           <div className="grid-2">
-            
-            <div className="card">
-              <h2>Supply / Withdraw RBTC</h2>
-              <div className="row">
-                <input 
-                  type="number" 
-                  placeholder="Amount RBTC" 
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                />
-                <button onClick={handleDeposit} disabled={isPending || !depositAmount}>Deposit</button>
-              </div>
-              <div className="row">
-                <input 
-                  type="number" 
-                  placeholder="Amount RBTC" 
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                />
-                <button onClick={handleWithdraw} disabled={isPending || !withdrawAmount}>Withdraw</button>
-              </div>
-            </div>
+            <SupplyWithdrawCard
+              depositAmount={depositAmount}
+              withdrawAmount={withdrawAmount}
+              onChangeDepositAmount={setDepositAmount}
+              onChangeWithdrawAmount={setWithdrawAmount}
+              onDeposit={handleDeposit}
+              onWithdraw={handleWithdraw}
+              isLoading={isDepositPending || isWithdrawPending}
+            />
 
-            <div className="card">
-              <h2>Borrow / Repay USDT0</h2>
-              <div className="row">
-                <input 
-                  type="number" 
-                  placeholder="Amount USDT0" 
-                  value={borrowAmount}
-                  onChange={(e) => setBorrowAmount(e.target.value)}
-                />
-                <button onClick={handleBorrow} disabled={isPending || !borrowAmount}>Borrow</button>
-              </div>
-              <div className="row">
-                <input 
-                  type="number" 
-                  placeholder="Amount USDT0" 
-                  value={repayAmount}
-                  onChange={(e) => setRepayAmount(e.target.value)}
-                />
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button onClick={handleApprove} disabled={isPending || !repayAmount}>Approve</button>
-                  <button onClick={handleRepay} disabled={isPending || !repayAmount}>Repay</button>
-                </div>
-              </div>
-              <small style={{ color: 'var(--rs-text-secondary)' }}>
-                Current Allowance: {usdtAllowance ? formatUSDT(usdtAllowance as bigint) : '0'} USDT0
-              </small>
-            </div>
-
+            <BorrowRepayCard
+              borrowAmount={borrowAmount}
+              repayAmount={repayAmount}
+              onChangeBorrowAmount={setBorrowAmount}
+              onChangeRepayAmount={setRepayAmount}
+              onBorrow={handleBorrow}
+              onApprove={handleApprove}
+              onRepay={handleRepay}
+              isLoading={isBorrowPending || isApprovePending || isRepayPending}
+              currentAllowance={usdtAllowance}
+              formatUSDT={formatUSDT}
+            />
           </div>
 
-          {isPending && <div className="status-card" style={{ backgroundColor: 'rgba(247, 147, 26, 0.1)', color: 'var(--rs-orange)' }}>Transaction Pending...</div>}
-          {isConfirming && <div className="status-card" style={{ backgroundColor: 'rgba(247, 147, 26, 0.1)', color: 'var(--rs-orange)' }}>Waiting for confirmation...</div>}
-          {isConfirmed && <div className="status-card" style={{ backgroundColor: 'rgba(76, 175, 80, 0.1)', color: '#4caf50' }}>Transaction Confirmed!</div>}
-          {writeError && <div className="status-card" style={{ backgroundColor: 'rgba(255, 68, 68, 0.1)', color: '#ff4444' }}>Error: {writeError.message}</div>}
-
+          <StatusMessage message={statusMessage} variant={statusVariant} />
         </div>
       )}
     </div>

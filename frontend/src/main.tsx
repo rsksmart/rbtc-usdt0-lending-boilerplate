@@ -9,17 +9,31 @@ import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
 import { config } from './wagmi';
 
-const queryClient = new QueryClient();
+// @ts-ignore
+BigInt.prototype.toJSON = function () {
+  return this.toString();
+};
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={darkTheme({
-          accentColor: '#F7931A',
-          accentColorForeground: 'white',
-          borderRadius: 'medium',
-        })}>
+        <RainbowKitProvider
+          theme={darkTheme({
+            accentColor: 'var(--rs-orange)',
+            accentColorForeground: 'white',
+            borderRadius: 'medium',
+          })}
+        >
           <App />
         </RainbowKitProvider>
       </QueryClientProvider>
