@@ -1,8 +1,7 @@
-import { formatEther, formatUnits } from 'viem';
+import { formatEther, formatUnits, maxUint256 } from 'viem';
 import { USDT0_DECIMALS } from '../config/contracts';
 
-export const MAX_UINT256 =
-  2n ** 256n - 1n;
+export const MAX_UINT256 = maxUint256;
 
 export function formatUSDT(value: bigint) {
   return formatUnits(value, USDT0_DECIMALS);
