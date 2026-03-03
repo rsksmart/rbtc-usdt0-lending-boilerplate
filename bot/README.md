@@ -5,7 +5,12 @@ This bot interacts with the Lending Boilerplate smart contracts on **Rootstock T
 ## Prerequisites
 
 - Node.js
-- A Telegram Bot Token (from @BotFather)
+- **A Telegram Bot Token**: You can get one from [@BotFather](https://t.me/BotFather) by following these steps:
+    1.  Open Telegram and search for `@BotFather`.
+    2.  Start a chat and send the `/newbot` command.
+    3.  Follow the instructions to choose a **name** (e.g., `My Lending Bot`) and a **username** (must end in `bot`, e.g., `MyLendingBoilerplateBot`).
+    4.  BotFather will provide an **API Token**. Copy this token for your `.env` file.
+    5.  For more details, see the official [Telegram Bot Tutorial](https://core.telegram.org/bots/tutorial).
 - **A funded Rootstock Testnet Wallet** (RBTC for gas). You can get tRBTC from the [RSK Faucet](https://faucet.rootstock.io/).
 
 ## Setup
@@ -20,7 +25,7 @@ This bot interacts with the Lending Boilerplate smart contracts on **Rootstock T
     ```env
     TELEGRAM_BOT_TOKEN=your_token_here
     PRIVATE_KEY=your_private_key_with_trbtc
-    RSK_TESTNET_RPC=https://public-node.testnet.rsk.co
+    RSK_TESTNET_RPC=https://rpc.testnet.rootstock.io/<YOUR-API-KEY>
     ```
 
 3.  **Deploy Contracts to Rootstock Testnet**:

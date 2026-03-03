@@ -31,7 +31,7 @@ if (!privateKey) {
 
 module.exports = {
     telegramToken: process.env.TELEGRAM_BOT_TOKEN,
-    rpcUrl: process.env.RSK_TESTNET_RPC || "https://public-node.testnet.rsk.co",
+    rpcUrl: process.env.RSK_TESTNET_RPC || "https://rpc.testnet.rootstock.io/<YOUR-API-KEY>",
     privateKey: privateKey,
     deployments,
     abis: {

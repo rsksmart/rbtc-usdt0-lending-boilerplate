@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "4.9.6",
-    "node-telegram-bot-api": "^0.67.0"
+    "node-telegram-bot-api": "^0.67.0",
+    "form-data": "^4.0.0"
   }
 }
