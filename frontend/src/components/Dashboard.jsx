@@ -172,7 +172,7 @@ const Dashboard = () => {
         return;
     }
 
-    if (usdtAllowance < amount) {
+    if (usdtAllowance === undefined || usdtAllowance < amount) {
       approve({
         address: addresses.USDT0,
         abi: MockUSDT0ABI,
@@ -207,7 +207,15 @@ const Dashboard = () => {
       18
   ) : '0';
 
-  const isApprovalNeeded = repayAmount && usdtAllowance !== undefined && parseUnits(repayAmount, 6) > usdtAllowance;
+  const isApprovalNeeded = (() => {
+    if (!repayAmount || isNaN(parseFloat(repayAmount))) return false;
+    try {
+      const amount = parseUnits(repayAmount, 6);
+      return usdtAllowance !== undefined && amount > usdtAllowance;
+    } catch (e) {
+      return false;
+    }
+  })();
 
   return (
     <div className="space-y-6">

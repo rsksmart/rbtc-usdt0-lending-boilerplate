@@ -39,7 +39,7 @@ const rskTestnet = {
 
 const config = getDefaultConfig({
   appName: 'Lending Boilerplate',
-  projectId: 'YOUR_PROJECT_ID',
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
   chains: [hardhat, rskTestnet],
   ssr: false,
 });
