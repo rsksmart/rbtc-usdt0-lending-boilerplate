@@ -102,8 +102,8 @@ Copy `.env.example` → `.env`, and fill in the values:
 
 ```text
 PRIVATE_KEY=0xYOUR_PRIVATE_KEY
-RSK_TESTNET_RPC=https://public-node.testnet.rsk.co
-RSK_MAINNET_RPC=https://public-node.rsk.co
+RSK_TESTNET_RPC=https://rpc.testnet.rootstock.io/<YOUR-API-KEY>
+RSK_MAINNET_RPC=https://rpc.rootstock.io/<YOUR-API-KEY>
 ```
 
 3) Replace Mock USDT0 with Real Address:
