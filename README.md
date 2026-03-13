@@ -198,6 +198,17 @@ Demo testnet completed ✅
 
 - Note: Ensure to have sufficient tRBTC of at least `0.003 tRBTC` to cover deployment and transaction fees.
 
+## Frontend
+
+A React frontend with RainbowKit and Wagmi is included in the `frontend/` directory.
+
+To run it:
+1. `cd frontend`
+2. `npm install`
+3. `npm run dev`
+
+Make sure to update the `LENDING_POOL_ADDRESS` and `USDT0_ADDRESS` in `frontend/src/App.tsx` with your deployed contract addresses.
+
 ## Contracts Overview (minimal unit)
 
 - **contracts/LendingPool.sol**  
