@@ -10,13 +10,13 @@
     "test": "hardhat test"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
     "dotenv": "^16.6.1",
-    "hardhat": "^2.22.7"
+    "hardhat": "^3.1.12"
   },
   "dependencies": {
     "@openzeppelin/contracts": "4.9.6",
-    "node-telegram-bot-api": "^0.67.0",
-    "form-data": "^4.0.0"
+    "form-data": "^4.0.5",
+    "node-telegram-bot-api": "^0.67.0"
   }
 }
